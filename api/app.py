@@ -1,4 +1,5 @@
 
+import time
 from typing import Optional
 
 from fastapi import FastAPI
@@ -21,18 +22,18 @@ UPLOAD_FOLDER = 'temp'
 STATIC_FOLDER = 'static/results'
 origins = [
     "http://localhost:90",
-    "http://localhost:90",
+    "http://localhost:4200",
 ]
 
 app = FastAPI()
 # app.mount("/static", StaticFiles(directory=STATIC_FOLDER), name="static")
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/hello")
@@ -46,9 +47,11 @@ async def process(files: List[UploadFile] = File(...)):
         for file in files:
             d = {}
             try:
-                name = str(uuid.uuid4()).split('-')[0]
+                nameSuffix = str(uuid.uuid4()).split('-')[0] + str(current_milli_time())
+                name = file.filename.split('.')[0]
                 ext = file.filename.split('.')[-1]
-                file_name = f'{UPLOAD_FOLDER}/{name}.{ext}'
+                fullName = name + nameSuffix
+                file_name = f'{UPLOAD_FOLDER}/{fullName}.{ext}'
                 with open(file_name, 'wb+') as f:
                     f.write(file.file.read())
                 f.close()
@@ -66,8 +69,13 @@ async def process(files: List[UploadFile] = File(...)):
             tasks.append(d)
         return JSONResponse(status_code=202, content=tasks)
     except Exception as ex:
-        logging.info(ex)
+        print('exception caught :', ex)
         return JSONResponse(status_code=400, content=[])
+
+
+def current_milli_time():
+    return round(time.time() * 1000)
+
 
 
 @app.get('/api/result/{task_id}', response_model=Prediction)
@@ -81,7 +89,11 @@ async def result(task_id: str):
     # Task done: return the value
     task_result = task.get()
     result = task_result.get('result')
-    return JSONResponse(status_code=200, content={'task_id': str(task_id), 'status': task_result.get('status'), 'result': result})
+    name = task_result.get('name')
+    path = task_result.get('path')
+    return JSONResponse(status_code=200, content={'task_id': str(task_id), 
+    'status': task_result.get('status'),
+    'result': result,'name':name,'path' : path})
 
 
 @app.get('/api/status/{task_id}', response_model=Prediction)
