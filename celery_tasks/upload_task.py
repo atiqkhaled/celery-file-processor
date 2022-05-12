@@ -9,11 +9,9 @@ sys.path.insert(0, os.path.realpath(os.path.pardir))
 
 
 
-CONNECT_STR = "DefaultEndpointsProtocol=https;AccountName=eymax;AccountKey=lHstQLqp+88xbnfGh36Pfhoq21ekRHgfNZHkZ4AsGkuhF3DO9TcYsj0dV9T8S6VCocXuFpZZiL6++AStDpkI8g==;EndpointSuffix=core.windows.net"
-CONTAINER_NAME = "max"
-output_blob_name = "output_blob.csv"
+CONNECT_STR = "DefaultEndpointsProtocol=https;AccountName=flexmax;AccountKey=uzaBDMo/m9r+qke6J9asWAqzkLhJ18QdvC3OezDo6o7mHz6MSYw1sFUZhthpPDCB39T/jRAKtDM4+ASttqij1w==;EndpointSuffix=core.windows.net"
+CONTAINER_NAME = "excel-storage"
 blob_service_client = BlobServiceClient.from_connection_string(CONNECT_STR)
-blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob="testMe.xlsx")
 
 # class PredictTask(Task):
 #     def __init__(self):
@@ -30,14 +28,16 @@ blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob
 
 @app.task(ignore_result=False, bind=True)
 def upload_file(self, file):
+    blobName = file.split('/')[2]
     i = 110000
     while i > 1:
         logging.info("HELLO")
         i = i -1
     try:
+        blob_client = blob_service_client.get_blob_client(container=CONTAINER_NAME, blob=blobName)
         # data_pred = self.model.predict(data)
-        # with open(file, "rb") as data:
-        #     blob_client.upload_blob(data=data)
+        with open(file, "rb") as data:
+            blob_client.upload_blob(data=data)
         name = file.split('/')[2]
         ## If file exists, delete it ##
         if os.path.isfile(file):
@@ -50,27 +50,3 @@ def upload_file(self, file):
             self.retry(countdown=1)
         except MaxRetriesExceededError as ex:
             return {'status': 'FAIL', 'result': 'max retried achieved'}
-
-
-@app.task(ignore_result=False, bind=True)
-def test_task(self):
-    i = 110000
-    while i > 1:
-        logging.info("HELLO")
-        i = i -1
-    try:
-        # data_pred = self.model.predict(data)
-        # with open(file, "rb") as data:
-        #     blob_client.upload_blob(data=data)
-        # name = file.split('/')[2]
-        # ## If file exists, delete it ##
-        # if os.path.isfile(file):
-        #   os.remove(file)
-        return {'status': 'SUCCESS', 'result': 'done'}
-    except Exception as ex:
-        try:
-            logging.info(ex) 
-            self.retry(countdown=1)
-        except MaxRetriesExceededError as ex:
-            return {'status': 'FAIL', 'result': 'max retried achieved'}
-
