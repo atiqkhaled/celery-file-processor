@@ -1,5 +1,4 @@
-# celery==4.4.7
-celery
+celery==4.4.7
 fastapi
 matplotlib
 opencv-python
