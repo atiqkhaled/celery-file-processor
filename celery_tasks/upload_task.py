@@ -7,8 +7,6 @@ import sys
 import os
 sys.path.insert(0, os.path.realpath(os.path.pardir))
 
-
-
 CONNECT_STR = "DefaultEndpointsProtocol=https;AccountName=flexmax;AccountKey=uzaBDMo/m9r+qke6J9asWAqzkLhJ18QdvC3OezDo6o7mHz6MSYw1sFUZhthpPDCB39T/jRAKtDM4+ASttqij1w==;EndpointSuffix=core.windows.net"
 CONTAINER_NAME = "excel-storage"
 blob_service_client = BlobServiceClient.from_connection_string(CONNECT_STR)
