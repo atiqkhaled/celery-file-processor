@@ -1,9 +1,10 @@
 import logging
 from celery import Task
 from celery.exceptions import MaxRetriesExceededError
-from .app_worker import app
-from azure.storage.blob import BlobServiceClient
 import sys
+sys.path.append("./celery_tasks")
+from app_worker import app
+from azure.storage.blob import BlobServiceClient
 import os
 sys.path.insert(0, os.path.realpath(os.path.pardir))
 
