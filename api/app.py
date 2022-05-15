@@ -57,11 +57,13 @@ def read_root():
 
 @app.post('/api/process')
 async def process(files: List[UploadFile] = File(...)):
+    print("Print 1")
     tasks = []
     try:
         for file in files:
             d = {}
             try:
+                print("Print 2")
                 nameSuffix = str(uuid.uuid4()).split('-')[0] + str(current_milli_time())
                 name = file.filename.split('.')[0]
                 ext = file.filename.split('.')[-1]
@@ -77,6 +79,7 @@ async def process(files: List[UploadFile] = File(...)):
                 d['status'] = 'PROCESSING'
                 d['url_result'] = f'/api/result/{task_id}'
             except Exception as ex:
+                print("APP Py")
                 logging.info(ex)
                 d['task_id'] = str(task_id)
                 d['status'] = 'ERROR'

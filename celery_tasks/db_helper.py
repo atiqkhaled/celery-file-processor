@@ -1,23 +1,30 @@
 import this
 import pymongo
+import sys
+sys.path.append("./celery_tasks")
+
+from property_reader import PropertyReader
+
 
 class DBHelper:
-    
-    def __init__(self,connection,dbName):
+    propertyReader = PropertyReader()
+    def __init__(self):
         #self.connection = "mongodb://host.docker.internal:27017"
         #self.dbName = "test"
-        self.connection = connection
-        self.dbName = dbName
         pass
 
-    def connection(self):
-        return self.connection
+    def getCollection(self,tableName):
+        print(tableName)
+        print("DB HHH 2")
+        client = pymongo.MongoClient(DBHelper.propertyReader.getDbConnectionString())
+        mydb = client[DBHelper.propertyReader.getDbName()]
+        return mydb[tableName]
 
-    def dbName(self):
-        return self.dbName
 
     def getDb(self):
-        client = pymongo.MongoClient(self.connection)
-        return client[self.dbName]
+        print("DB HHH")
+        print(DBHelper.propertyReader.getDbConnectionString())
+        client = pymongo.MongoClient(DBHelper.propertyReader.getDbConnectionString())
+        return client[DBHelper.propertyReader.getDbName()]
         
         

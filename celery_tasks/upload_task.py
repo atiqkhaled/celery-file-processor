@@ -47,6 +47,7 @@ def upload_file(self, file):
                     'name':name,'path': name}
     except Exception as ex:
         try:
+            print("Exception")
             logging.info(ex) 
             self.retry(countdown=1)
         except MaxRetriesExceededError as ex:

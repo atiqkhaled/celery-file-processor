@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 
 
 class FileRepo:
-    dbHelper = DBHelper("mongodb://host.docker.internal:27017", "test")
+    dbHelper = DBHelper()
 
     def __init__(self):
         #self.connection = "mongodb://host.docker.internal:27017"

@@ -7,7 +7,7 @@ from bson.objectid import ObjectId
 
 
 class MapperRepo:
-    dbHelper = DBHelper("mongodb://host.docker.internal:27017", "test")
+    dbHelper = DBHelper()
 
     def __init__(self):
         #self.connection = "mongodb://host.docker.internal:27017"
@@ -17,6 +17,6 @@ class MapperRepo:
 
     def getMapperById(self, mapperId):
         mydb = MapperRepo.dbHelper.getDb()
-        mappers = mydb.filecontents
+        mappers = mydb.mappers
         mapperIdObj = ObjectId(mapperId)
         return mappers.find_one({"_id": mapperIdObj})
