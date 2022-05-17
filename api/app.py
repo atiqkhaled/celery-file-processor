@@ -26,7 +26,7 @@ from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+import websockets
 import os
 import logging
 sys.path.insert(0, os.path.realpath(os.path.pardir))
@@ -54,6 +54,14 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
+@app.post("/socket")
+async def test():
+    print("hello socket")
+    async with websockets.connect('ws://localhost:8999/') as websocket:
+        await websocket.send("hello from py")
+        response = await websocket.recv()
+        print(response)
+        return response
 
 @app.post('/api/process')
 async def process(files: List[UploadFile] = File(...)):

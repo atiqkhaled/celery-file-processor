@@ -8,6 +8,7 @@ RUN pip install azure-storage-blob
 RUN pip install pymongo
 RUN pip install openpyxl
 RUN pip install configparser
+RUN pip install websockets
 COPY . .
 # RUN rm -r /app/api/uploads/*; exit 0
 # RUN rm -r /app/api/static/*; exit 0
