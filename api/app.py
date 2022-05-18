@@ -6,8 +6,6 @@ sys.path.append("../celery_tasks")
 from upload_task import upload_file
 from save_record_task import save_entry
 from celery import current_app 
-
-
 from pydantic.typing import List
 import json
 from bson.objectid import ObjectId
@@ -32,7 +30,8 @@ import logging
 sys.path.insert(0, os.path.realpath(os.path.pardir))
 #import pymongo
 
-UPLOAD_FOLDER = 'temp'
+TMP_FOLDER = 'temp'
+UPLOAD_FOLDER = 'upload'
 STATIC_FOLDER = 'static/results'
 origins = [
     "http://localhost:90",
@@ -66,7 +65,7 @@ async def process(files: List[UploadFile] = File(...)):
                 name = file.filename.split('.')[0]
                 ext = file.filename.split('.')[-1]
                 fullName = name + nameSuffix
-                file_name = f'{UPLOAD_FOLDER}/{fullName}.{ext}'
+                file_name = f'{TMP_FOLDER}/{fullName}.{ext}'
                 with open(file_name, 'wb+') as f:
                     f.write(file.file.read())
                 f.close()
