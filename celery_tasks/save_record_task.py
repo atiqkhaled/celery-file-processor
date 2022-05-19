@@ -1,3 +1,4 @@
+from property_reader import PropertyReader
 import configparser
 from mapper_repo import MapperRepo
 from file_content_repo import FileRepo
@@ -14,7 +15,6 @@ from celery import Task
 import sys
 from azure.storage.blob import BlobServiceClient
 sys.path.append("./celery_tasks")
-from property_reader import PropertyReader
 
 
 sys.path.insert(0, os.path.realpath(os.path.pardir))
@@ -35,29 +35,33 @@ def getExcelHeader(rows):
     return [cell.value for cell in next(rows)]
 
 
+def getDownloadedWorkbook(filePath):
+    blob_client = blob_service_client.get_blob_client(
+        container=propertyReader.getContainer(), blob=filePath)
+    download_file_path = os.path.join("temp", filePath)
+
+    with open(download_file_path, "wb") as download_file:
+        download_file.write(blob_client.download_blob().readall())
+
+    return load_workbook(download_file_path)
+
+
 @app.task(ignore_result=False, bind=True)
 def save_entry(self, fileId):
     dbHelper = DBHelper()
-    #mydb = dbHelper.getDb()
     fileRepo = FileRepo()
     fileContent = fileRepo.getFileContentById(fileId)
+    print(fileId)
+    print(fileContent)
     filePath = fileContent["path"]
+    
     mapperRepo = MapperRepo()
     mapper = mapperRepo.getMapperById(fileContent["mapperId"])
     mappingInfo = getMapping(mapper)
     collections = dbHelper.getCollection(mapper["tableName"])
     mappedHeaders = list(mappingInfo.values())
-    
-    blob_client = blob_service_client.get_blob_client(
-        container=propertyReader.getContainer(), blob=filePath)
 
-    download_file_path = os.path.join("temp",  fileContent["path"])
-    print("\nDownloading blob to \n\t" + download_file_path)
-
-    with open(download_file_path, "wb") as download_file:
-       download_file.write(blob_client.download_blob().readall())
-
-    book = load_workbook(download_file_path)
+    book = getDownloadedWorkbook(filePath)
     sheets = book.sheetnames
     for sheet in sheets:
         worksheet = book[sheet]

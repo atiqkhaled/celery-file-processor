@@ -24,6 +24,7 @@ class DBHelper:
     def getDb(self):
         print("DB HHH")
         print(DBHelper.propertyReader.getDbConnectionString())
+        print(DBHelper.propertyReader.getDbName())
         client = pymongo.MongoClient(DBHelper.propertyReader.getDbConnectionString())
         return client[DBHelper.propertyReader.getDbName()]
         
