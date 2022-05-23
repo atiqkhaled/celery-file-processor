@@ -28,11 +28,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
 sys.path.insert(0, os.path.realpath(os.path.pardir))
-#import pymongo
 
 TMP_FOLDER = 'temp'
-UPLOAD_FOLDER = 'upload'
-STATIC_FOLDER = 'static/results'
 origins = [
     "http://localhost:90",
     "http://localhost:4200"
