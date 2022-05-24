@@ -1,9 +1,8 @@
+import sys
+from helper.property_reader import PropertyReader
 import this
 import pymongo
-import sys
-sys.path.append("./celery_tasks")
 
-from property_reader import PropertyReader
 
 
 class DBHelper:
@@ -13,14 +12,13 @@ class DBHelper:
         #self.dbName = "test"
         pass
 
-    def getCollection(self,tableName):
-        client = pymongo.MongoClient(self.propertyReader.getDbConnectionString())
+    def getCollection(self, tableName):
+        client = pymongo.MongoClient(
+            self.propertyReader.getDbConnectionString())
         mydb = client[self.propertyReader.getDbName()]
         return mydb[tableName]
 
-
     def getDb(self):
-        client = pymongo.MongoClient(self.propertyReader.getDbConnectionString())
+        client = pymongo.MongoClient(
+            self.propertyReader.getDbConnectionString())
         return client[self.propertyReader.getDbName()]
-        
-        

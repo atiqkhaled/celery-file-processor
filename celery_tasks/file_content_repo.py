@@ -1,9 +1,8 @@
+from bson.objectid import ObjectId
+import pymongo
+from db_helper import DBHelper
 import sys
 sys.path.append("./celery_tasks")
-from db_helper import DBHelper
-import pymongo
-from bson.objectid import ObjectId
-
 
 
 class FileRepo:
@@ -14,9 +13,14 @@ class FileRepo:
         #self.dbName = "test"
         pass
 
-
     def getFileContentById(self, fileId):
         mydb = FileRepo.dbHelper.getDb()
         fileContents = mydb.filecontents
         fileContentId = ObjectId(fileId)
         return fileContents.find_one({"_id": fileContentId})
+
+    def update(self, filterStatusId, newStatusId):
+        mydb = FileRepo.dbHelper.getDb()
+        collections = FileRepo.dbHelper.getCollection("filecontents")
+        collections.update_one({"status": filterStatusId}, {
+                                    "$set": {"status": newStatusId}})

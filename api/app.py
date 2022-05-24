@@ -1,8 +1,14 @@
-
+import sys
+import time
+sys.path.append("../celery_tasks")
+from save_record_task import save_entry
+from upload_task import upload_file
+import websockets
+from fastapi import FastAPI
 from celery import current_app
 import logging
 import os
-from fastapi import FastAPI,WebSocket
+from fastapi import FastAPI, WebSocket
 from typing import Optional
 from fastapi import FastAPI, File, UploadFile
 from fastapi.staticfiles import StaticFiles
@@ -18,35 +24,6 @@ from openpyxl import load_workbook
 from bson.objectid import ObjectId
 import json
 from pydantic.typing import List
-import sys
-
-sys.path.append("../celery_tasks")
-
-from save_record_task import save_entry
-from celery import current_app 
-from pydantic.typing import List
-import json
-from bson.objectid import ObjectId
-from openpyxl import load_workbook
-from bson.json_util import dumps, loads
-import pymongo
-import openpyxl
-import uuid
-from models import Task, Prediction
-from celery.result import AsyncResult
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi import FastAPI, File, UploadFile
-from typing import Optional
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-import websockets
-import os
-import logging
-from upload_task import upload_file
-import time
 sys.path.insert(0, os.path.realpath(os.path.pardir))
 #import pymongo
 
@@ -72,14 +49,6 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
-# @app.post("/socket")
-# async def test():
-#     print("hello socket")
-#     async with websockets.connect('ws://localhost:8999/') as websocket:
-#         await websocket.send("hello from py")
-#         response = await websocket.recv()
-#         print(response)
-#         return response
 
 @app.post('/api/process')
 async def process(files: List[UploadFile] = File(...)):
@@ -147,64 +116,38 @@ async def status(task_id: str):
     return JSONResponse(status_code=200, content={'task_id': str(task_id), 'status': task.status, 'result': ''})
 
 
-# @app.get('/api/file/{fileId}')
-# async def readFIle(fileId: str):
-#     print(str)
-#     client = pymongo.MongoClient("mongodb://host.docker.internal:27017")
-#     mydb = client["test"]
-#     fileContents = mydb.filecontents
-#     fileContentId = ObjectId(fileId)
-#     fileContent = fileContents.find_one({"_id": fileContentId})
-#     mapperId = ObjectId(fileContent["mapperId"])
-#     mappers = mydb.mappers
-#     mapper = mappers.find_one({"_id": mapperId})
-#     mappingInfo = json.loads(mapper["modelContent"])
-#     collections = mydb[mapper["tableName"]]
-#     mappedHeaders = list(mappingInfo.values())
-#     book = load_workbook("Employee.xlsx")
-#     sheets = book.sheetnames
-#     for sheet in sheets:
-#         worksheet = book[sheet]
-#         rows = worksheet.rows
-#         headers = [cell.value for cell in next(rows)]
-#         headersDict = {k: v for v, k in enumerate(headers)}
-#         filterdHeaders = [head for head in headers if head in mappedHeaders]
-#         dbEntries = []
-#         for row in rows:
-#             dbEntry = {}
-#             for entry in mappingInfo:
-#                 excelColumn = mappingInfo[entry]
-#                 print(entry)
-#                 print(excelColumn)
-#                 if excelColumn in filterdHeaders:
-#                     dbEntry[entry] = row[headersDict[excelColumn]].value
-#                 else:
-#                     dbEntry[entry] = ""
-#             dbEntries.append(dbEntry)
-#             print(row[1].value)
-#             print(dbEntries)
-
-#     collections.insert_many(dbEntries)
-
-
 @app.get('/api/file/{fileId}')
 async def saveRecord(fileId: str):
-    tasks = current_app.tasks.keys()
-    print(tasks)
-    print("Readddd")
     taskId = save_entry.delay(fileId)
-    return {"task_id": taskId}
+    return {"taskId": str(taskId)}
 
 
 @app.websocket("/ws")
-async def test(websocket:WebSocket):
-    print("Accepting connection")
+async def test(websocket: WebSocket):
     await websocket.accept()
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(f"Message text was: {data}")
+    fileTaskRequest = await websocket.receive_json()
+    taskId = fileTaskRequest["taskId"]
+    #fileId = fileTaskRequest["fileId"]
+    a = True
+    doneTask = {}
+    maxTry = 4
+    currentTry = 0
+    while a:
+        task = AsyncResult(str(taskId))
+        if task.ready():
+            doneTask = task.get()
+            if doneTask["status"] != "FAIL":
+                doneTask["fileStatus"] = "INJECTED"
+            else:
+                doneTask["fileStatus"] = "INJECTION_FAILED"
+            a = False
+        else:
+            if currentTry < maxTry:
+                currentTry = currentTry + 1
+                time.sleep(2)
+            else:
+                doneTask["status"] = "FAIL"
+                doneTask["fileStatus"] = "INJECTION_FAILED"
+                a = False
 
-
-
-
-    
+    await websocket.send_json(doneTask)
