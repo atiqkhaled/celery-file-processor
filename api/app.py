@@ -1,9 +1,7 @@
-
-import time
+from fileinput import filename
 import sys
+import time
 sys.path.append("../celery_tasks")
-
-from upload_task import upload_file
 from save_record_task import save_entry
 from celery import current_app 
 from pydantic.typing import List
@@ -11,8 +9,6 @@ import json
 from bson.objectid import ObjectId
 from openpyxl import load_workbook
 from bson.json_util import dumps, loads
-import pymongo
-import openpyxl
 import uuid
 from models import Task, Prediction
 from celery.result import AsyncResult
@@ -22,11 +18,24 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, File, UploadFile
 from typing import Optional
 
+from upload_task import upload_file
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-import os
+from celery import current_app
 import logging
+import os
+from fastapi import FastAPI, WebSocket
+from typing import Optional
+from fastapi import FastAPI, File, UploadFile
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from celery.result import AsyncResult
+from models import Task, Prediction
+import uuid
+from bson.json_util import dumps, loads
+from bson.objectid import ObjectId
+import json
+from pydantic.typing import List
 sys.path.insert(0, os.path.realpath(os.path.pardir))
 
 TMP_FOLDER = 'temp'
@@ -53,12 +62,15 @@ def read_root():
 
 @app.post('/api/process')
 async def process(files: List[UploadFile] = File(...)):
+    print("Print 1")
     tasks = []
     try:
         for file in files:
             d = {}
             try:
-                nameSuffix = str(uuid.uuid4()).split('-')[0] + str(current_milli_time())
+                print("Print 2")
+                nameSuffix = str(uuid.uuid4()).split(
+                    '-')[0] + str(current_milli_time())
                 name = file.filename.split('.')[0]
                 ext = file.filename.split('.')[-1]
                 fullName = name + nameSuffix
@@ -66,13 +78,13 @@ async def process(files: List[UploadFile] = File(...)):
                 with open(file_name, 'wb+') as f:
                     f.write(file.file.read())
                 f.close()
-
                 # upload task
                 task_id = upload_file.delay(os.path.join('api', file_name))
                 d['task_id'] = str(task_id)
                 d['status'] = 'PROCESSING'
                 d['url_result'] = f'/api/result/{task_id}'
             except Exception as ex:
+                print("APP Py")
                 logging.info(ex)
                 d['task_id'] = str(task_id)
                 d['status'] = 'ERROR'
@@ -88,7 +100,6 @@ def current_milli_time():
     return round(time.time() * 1000)
 
 
-
 @app.get('/api/result/{task_id}', response_model=Prediction)
 async def result(task_id: str):
     task = AsyncResult(task_id)
@@ -102,9 +113,9 @@ async def result(task_id: str):
     result = task_result.get('result')
     name = task_result.get('name')
     path = task_result.get('path')
-    return JSONResponse(status_code=200, content={'task_id': str(task_id), 
-    'status': task_result.get('status'),
-    'result': result,'name':name,'path' : path})
+    return JSONResponse(status_code=200, content={'task_id': str(task_id),
+                                                  'status': task_result.get('status'),
+                                                  'result': result, 'name': name, 'path': path})
 
 
 @app.get('/api/status/{task_id}', response_model=Prediction)
@@ -115,53 +126,37 @@ async def status(task_id: str):
 
 
 @app.get('/api/file/{fileId}')
-async def readFIle(fileId: str):
-    client = pymongo.MongoClient("mongodb://host.docker.internal:27017")
-    mydb = client["test"]
-    fileContents = mydb.filecontents
-    fileContentId = ObjectId(fileId)
-    fileContent = fileContents.find_one({"_id": fileContentId})
-    mapperId = ObjectId(fileContent["mapperId"])
-    mappers = mydb.mappers
-    mapper = mappers.find_one({"_id": mapperId})
-    mappingInfo = json.loads(mapper["modelContent"])
-    collections = mydb[mapper["tableName"]]
-    mappedHeaders = list(mappingInfo.values())
-    book = load_workbook("Employee.xlsx")
-    sheets = book.sheetnames
-    for sheet in sheets:
-        worksheet = book[sheet]
-        rows = worksheet.rows
-        headers = [cell.value for cell in next(rows)]
-        headersDict = {k: v for v, k in enumerate(headers)}
-        filterdHeaders = [head for head in headers if head in mappedHeaders]
-        dbEntries = []
-        for row in rows:
-            dbEntry = {}
-            for entry in mappingInfo:
-                excelColumn = mappingInfo[entry]
-                print(entry)
-                print(excelColumn)
-                if excelColumn in filterdHeaders:
-                    dbEntry[entry] = row[headersDict[excelColumn]].value
-                else:
-                    dbEntry[entry] = ""
-            dbEntries.append(dbEntry)
-            print(row[1].value)
-            print(dbEntries)
-
-    collections.insert_many(dbEntries)
-
-
-
-@app.get('/api/file2/{fileId}')
 async def saveRecord(fileId: str):
-    tasks = current_app.tasks.keys()
-    print(tasks)
-    print("Readddd")
-    task_id = save_entry.delay(fileId)
-    return {"Hello": "World"}
+    taskId = save_entry.delay(fileId)
+    return {"taskId": str(taskId)}
 
 
+@app.websocket("/ws")
+async def test(websocket: WebSocket):
+    await websocket.accept()
+    fileTaskRequest = await websocket.receive_json()
+    taskId = fileTaskRequest["taskId"]
+    #fileId = fileTaskRequest["fileId"]
+    a = True
+    doneTask = {}
+    maxTry = 4
+    currentTry = 0
+    while a:
+        task = AsyncResult(str(taskId))
+        if task.ready():
+            doneTask = task.get()
+            if doneTask["status"] != "FAIL":
+                doneTask["fileStatus"] = "INJECTED"
+            else:
+                doneTask["fileStatus"] = "INJECTION_FAILED"
+            a = False
+        else:
+            if currentTry < maxTry:
+                currentTry = currentTry + 1
+                time.sleep(2)
+            else:
+                doneTask["status"] = "FAIL"
+                doneTask["fileStatus"] = "INJECTION_FAILED"
+                a = False
 
-
+    await websocket.send_json(doneTask)
