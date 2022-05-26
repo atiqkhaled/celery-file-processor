@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.realpath(os.path.pardir))
 
 @app.task(ignore_result=False, bind=True)
 def upload_file(self, file):
-    i = 90000
-    while i > 1:
-        logging.info("HELLO")
-        i = i -1
+    # i = 10000
+    # while i > 1:
+    #     logging.info("HELLO")
+    #     i = i -1
     try:
-        name = file.split('/')[1]
+        name = file.split('/')[2]
         destinationFactory = DestinationFactory()
         azureStorageHandler = destinationFactory.create_destination(DESTINATION)
         azureStorageHandler.upload(file)
@@ -29,6 +29,6 @@ def upload_file(self, file):
     except Exception as ex:
         try:
             logging.info(ex) 
-            #self.retry(countdown=1)
+            self.retry(countdown=1)
         except MaxRetriesExceededError as ex:
             return {'status': 'FAIL', 'result': 'max retried achieved'}
